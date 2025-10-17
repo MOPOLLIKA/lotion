@@ -76,7 +76,65 @@ def initial_session_state() -> dict:
     }
 
 
-perplexity_tools = create_perplexity_tools()
+STAGE_SEQUENCE = [
+    "intake",
+    "viability",
+    "visuals",
+    "spec",
+    "sourcing",
+    "final",
+]
+
+
+def set_stage(session_state, stage: str) -> str:
+    """Advance or rewind the current stage."""
+
+    stage = stage.lower().strip()
+    if stage not in STAGE_SEQUENCE:
+        return (
+            "Stage unchanged. Pick one of: "
+            + ", ".join(STAGE_SEQUENCE)
+        )
+
+    session_state["stage"] = stage
+    return f"Stage set to {stage}."
+
+
+def set_awaiting(session_state, awaiting: bool) -> str:
+    """Flag whether we are waiting on the user."""
+
+    session_state["awaiting_approval"] = awaiting
+    return f"awaiting_approval set to {awaiting}."
+
+
+def mark_approval(session_state, gate: str, value: bool = True) -> str:
+    """Update a stage approval toggle."""
+
+    gate = gate.lower().strip()
+    approvals = session_state.setdefault(
+        "approvals", {"viability": False, "visuals": False, "spec": False}
+    )
+    if gate not in approvals:
+        return "Approval untouched. Use viability, visuals, or spec."
+
+    approvals[gate] = value
+    return f"Marked {gate} approval as {value}."
+
+
+def record_visual_choice(
+    session_state, option_id: str, notes: str = ""
+) -> str:
+    """Persist the selected visual direction."""
+
+    session_state["selected_visual"] = {
+        "option_id": option_id.strip(),
+        "notes": notes.strip(),
+    }
+    return "Saved visual pick."
+
+
+research_tools = create_perplexity_tools()
+sourcing_tools = create_perplexity_tools()
 
 
 research_agent = Agent(
@@ -93,7 +151,7 @@ research_agent = Agent(
         Keep the tone plain language and explain like a teammate.
         """
     ).strip(),
-    tools=[perplexity_tools],
+    tools=[research_tools],
     markdown=True,
 )
 
@@ -146,7 +204,7 @@ sourcing_agent = Agent(
         Flag gaps or lead quality issues plainly.
         """
     ).strip(),
-    tools=[perplexity_tools],
+    tools=[sourcing_tools],
     markdown=True,
 )
 
@@ -162,6 +220,13 @@ APPROVAL_CUES = (
     "continue",
     "ship it",
     "run it",
+    "decide yourself",
+    "you pick",
+    "you choose",
+    "roll with it",
+    "i'm in",
+    "all good",
+    "sure thing",
 )
 
 
@@ -169,20 +234,29 @@ TEAM_INSTRUCTIONS = dedent(
     """
     You are CoordinatorPM leading the Product Studio Team. Use natural, human language—no formal sign-offs.
 
-    Stage order: intake → viability → visuals → spec → sourcing → final. Session state tells you where we are. Only move forward when the user vibes with the current stage.
+    Snapshot (auto-filled from session state):
+    - stage: {{stage}}
+    - awaiting_approval: {{awaiting_approval}}
+    - approvals: {{approvals}}
+    - selected_visual: {{selected_visual}}
+
+    Stage order: intake → viability → visuals → spec → sourcing → final. Only move forward when the user vibes with the current stage.
+
+    Tools you can call:
+    - set_stage(stage="...")
+    - set_awaiting(awaiting=True|False)
+    - mark_approval(gate="viability|visuals|spec", value=True|False)
+    - record_visual_choice(option_id="option 2", notes="..." )
 
     Approvals:
-    - Treat casual phrases like {approval_examples} as a thumbs-up. Examples: "yeah I like that", "sounds good", "go ahead".
+    - Treat casual phrases like {approval_examples} as a thumbs-up. Examples: "yeah I like that", "sounds good", "go ahead", "decide yourself".
     - If user hesitates ("hmm", "not sure", "can we tweak"), call the specialist again or ask clarifying questions.
-    - When you detect approval, update session_state:
-        awaiting_approval = False
-        approvals[stage] = True (for viability/visuals/spec)
-        advance to the next stage
+    - When you detect approval, mark the gate with mark_approval(...), flip set_awaiting(False), and advance with set_stage(...).
 
     Stage duties:
-    - intake: recap the brief, fill gaps, set awaiting_approval=True until user confirms.
+    - intake: recap the brief, fill gaps, set awaiting_approval True until user confirms. If they say "decide yourself", go ahead and move to viability.
     - viability: delegate to ResearchAgent once you've got enough context. Summarize their take and wait for a chill approval.
-    - visuals: only after viability approval. Delegate to VisualAgent, present options, let the user pick casually ("option 2 please"). Capture pick in session_state.selected_visual.
+    - visuals: only after viability approval. Delegate to VisualAgent, present options, let the user pick casually ("option 2 please"). Capture pick via record_visual_choice.
     - spec: after visuals approval. Have ProductAgent draft the spec, highlight open questions, pause for sign-off.
     - sourcing: after spec approval. Delegate to SourcingAgent. Encourage the user to choose leads or ask for refinements.
     - final: stitch everything into a tidy recap with next moves. Wrap warmly, no stiff corporate tone.
@@ -201,6 +275,7 @@ innovation_team = Team(
     add_session_state_to_context=True,
     enable_agentic_state=True,
     session_state=initial_session_state(),
+    tools=[set_stage, set_awaiting, mark_approval, record_visual_choice],
 )
 
 

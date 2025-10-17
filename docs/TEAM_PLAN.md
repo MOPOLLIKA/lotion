@@ -33,6 +33,7 @@ A concise, human-in-the-loop agent team for product ideation through sourcing. O
 ## Agents (Single Team, No Subteams)
 - CoordinatorPM
   - Orchestrates stages, enforces gates, writes/reads session state, asks for approvals.
+  - Calls helper tools (`set_stage`, `set_awaiting`, `mark_approval`, `record_visual_choice`) so changes persist.
   - Never advances stage without explicit approval; supports “revise <stage>”.
 - ResearchAgent
   - Market/competitive analysis, viability scoring, citations.
@@ -67,7 +68,7 @@ Implementation flags: set `add_session_state_to_context=True` and `enable_agenti
 - Do not re‑enter completed stages unless the user says “revise <stage> …”.
 
 ## Tools & Env
-- Perplexity MCP: `MCPTools(command="npx -y @perplexity-ai/mcp-server", include_tools=["perplexity_search"])`
+- Perplexity MCP: instantiate a fresh `MCPTools(command="npx -y @perplexity-ai/mcp-server", include_tools=["perplexity_search"])` per agent that needs it (ResearchAgent, SourcingAgent).
   - Env: `PERPLEXITY_API_KEY` (required), optional `PERPLEXITY_TIMEOUT_MS`.
   - Requires Node ≥ 18 and `npx`.
 - Image generation: optional future step; currently VisualAgent drafts prompts instead of calling tools.
