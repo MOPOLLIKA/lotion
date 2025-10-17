@@ -3,7 +3,7 @@
 This package holds the single-team, stage-gated product studio described in `docs/TEAM_PLAN.md`. One coordinator runs the full pipeline end-to-end; there are no subteams or workflows.
 
 ## Team Members
-- **CoordinatorPM** (team leader instructions) – manages stages, handles approvals in casual language, and keeps session state aligned with the conversation (it emits Python-style lines like `session_state['stage'] = 'viability'` whenever something changes).
+- **CoordinatorPM** (team leader instructions) – manages stages, handles approvals in casual language, and uses helper tools (`set_stage`, `set_awaiting`, `mark_approval`, `record_brief`, `record_visual_choice`) to keep session state aligned with the conversation.
 - **ResearchAgent** – checks viability with Perplexity `perplexity_search` and returns a verdict with citations.
 - **VisualAgent** – shares three branded mockups as descriptive briefs (no image calls yet) and keeps the tone laid-back.
 - **ProductAgent** – writes the v1 product spec, BOM, and open questions.

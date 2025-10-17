@@ -33,7 +33,7 @@ A concise, human-in-the-loop agent team for product ideation through sourcing. O
 ## Agents (Single Team, No Subteams)
 - CoordinatorPM
   - Orchestrates stages, enforces gates, writes/reads session state, asks for approvals.
-  - Keeps track of stage/approval shifts via the shared session state so the rest of the team stays aligned.
+  - Uses small helper tools (`set_stage`, `set_awaiting`, `mark_approval`, `record_brief`, `record_visual_choice`) to mutate shared state so every stage change persists.
   - Never advances stage without explicit approval; supports “revise <stage>”.
 - ResearchAgent
   - Market/competitive analysis, viability scoring, citations.

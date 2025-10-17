@@ -71,6 +71,7 @@ def initial_session_state() -> dict:
         "stage": "intake",
         "awaiting_approval": False,
         "approvals": {"viability": False, "visuals": False, "spec": False},
+        "brief": {},
         "decision": {
             "status": "pending",
             "confidence": 0.0,
@@ -96,6 +97,68 @@ def team_database() -> SqliteDb:
     data_dir.mkdir(parents=True, exist_ok=True)
     db_file = data_dir / "product_studio.db"
     return SqliteDb(db_file=str(db_file))
+
+
+STAGE_SEQUENCE = [
+    "intake",
+    "viability",
+    "visuals",
+    "spec",
+    "sourcing",
+    "final",
+]
+
+
+def set_stage(session_state, stage: str) -> str:
+    """Advance or rewind the current stage."""
+
+    stage = stage.lower().strip()
+    if stage not in STAGE_SEQUENCE:
+        return "Stage unchanged. Pick one of: " + ", ".join(STAGE_SEQUENCE)
+
+    session_state["stage"] = stage
+    return f"Stage set to {stage}."
+
+
+def set_awaiting(session_state, awaiting: bool) -> str:
+    """Flag whether we are waiting on the user."""
+
+    session_state["awaiting_approval"] = awaiting
+    return f"awaiting_approval set to {awaiting}."
+
+
+def mark_approval(session_state, gate: str, value: bool = True) -> str:
+    """Update a stage approval toggle."""
+
+    gate = gate.lower().strip()
+    approvals = session_state.setdefault(
+        "approvals", {"viability": False, "visuals": False, "spec": False}
+    )
+    if gate not in approvals:
+        return "Approval untouched. Use viability, visuals, or spec."
+
+    approvals[gate] = value
+    return f"Marked {gate} approval as {value}."
+
+
+def record_visual_choice(
+    session_state, option_id: str, notes: str = ""
+) -> str:
+    """Persist the selected visual direction."""
+
+    session_state["selected_visual"] = {
+        "option_id": option_id.strip(),
+        "notes": notes.strip(),
+    }
+    return "Saved visual pick."
+
+
+def record_brief(session_state, key: str, value: str) -> str:
+    """Capture brief details gathered during intake."""
+
+    brief = session_state.setdefault("brief", {})
+    brief[key.strip().lower()] = value.strip()
+    return "Brief updated."
 
 
 research_tools = create_perplexity_tools()
@@ -203,19 +266,27 @@ TEAM_INSTRUCTIONS = dedent(
     - stage: {{stage}}
     - awaiting_approval: {{awaiting_approval}}
     - approvals: {{approvals}}
+    - brief: {{brief}}
     - selected_visual: {{selected_visual}}
 
     Stage order: intake → viability → visuals → spec → sourcing → final. Only move forward when the user vibes with the current stage.
 
+    Tools you can call:
+    - set_stage(stage="...")
+    - set_awaiting(awaiting=True|False)
+    - mark_approval(gate="viability|visuals|spec", value=True|False)
+    - record_visual_choice(option_id="option 2", notes="...")
+    - record_brief(key="format", value="bar soap")
+
     Approvals:
     - Treat casual phrases like {approval_examples} as a thumbs-up. Examples: "yeah I like that", "sounds good", "go ahead", "decide yourself".
     - If user hesitates ("hmm", "not sure", "can we tweak"), call the specialist again or ask clarifying questions.
-    - When you detect approval, explicitly show the session_state edits using Python-style lines, e.g. `session_state['stage'] = 'viability'`, `session_state['approvals']['viability'] = True`, `session_state['awaiting_approval'] = False`. Place them under a short "State tweaks:" bullet so the platform can apply them.
+    - When you detect approval, call the tools above to update session_state (e.g. set_stage("viability"), mark_approval("viability"), set_awaiting(False)).
 
     Stage duties:
-    - intake: recap the brief, fill gaps, remind the user what we still need. If they say "decide yourself", go ahead and move to viability.
+    - intake: recap the brief, fill gaps, remind the user what we still need. Use record_brief to stash facts (format, purpose, must-haves). If they say "decide yourself", go ahead and move to viability.
     - viability: delegate to ResearchAgent once you've got enough context. Summarize their take and wait for a chill approval.
-    - visuals: only after viability approval. Delegate to VisualAgent, present options, let the user pick casually ("option 2 please"). Echo their choice back.
+    - visuals: only after viability approval. Delegate to VisualAgent, present options, let the user pick casually ("option 2 please"). Capture via record_visual_choice.
     - spec: after visuals approval. Have ProductAgent draft the spec, highlight open questions, pause for sign-off.
     - sourcing: after spec approval. Delegate to SourcingAgent. Encourage the user to choose leads or ask for refinements.
     - final: stitch everything into a tidy recap with next moves. Wrap warmly, no stiff corporate tone.
@@ -234,6 +305,13 @@ innovation_team = Team(
     add_session_state_to_context=True,
     enable_agentic_state=True,
     session_state=initial_session_state(),
+    tools=[
+        set_stage,
+        set_awaiting,
+        mark_approval,
+        record_visual_choice,
+        record_brief,
+    ],
     db=team_database(),
 )
 
