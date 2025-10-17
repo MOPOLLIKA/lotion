@@ -12,7 +12,7 @@ Then open http://localhost:7777 to interact with the OS.
 
 from agno.os import AgentOS
 
-from innovation_team import innovation_team
+from team import innovation_team
 
 
 agent_os = AgentOS(

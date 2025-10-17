@@ -6,7 +6,7 @@ Set `OPENROUTER_API_KEY` in your environment before running this module:
 
 Run the workflow example:
 
-    python innovation_team.py
+    python -m team.innovation_team
 """
 
 import os
