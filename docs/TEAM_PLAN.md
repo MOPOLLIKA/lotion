@@ -39,7 +39,7 @@ A concise, human-in-the-loop agent team for product ideation through sourcing. O
   - Tools: MCPTools `include_tools=["perplexity_search"]`.
 - VisualAgent
   - Mockups + style brief; present distinct options.
-  - Tools: `OpenAITools` with only `generate_image` enabled.
+  - (Current build ships without auto image generation; draft prompts instead. Add `OpenAITools` later if desired.)
 - ProductAgent
   - Crisp v1 spec and BOM; compliance and test notes; defers deep extras unless asked.
 - SourcingAgent
@@ -70,8 +70,7 @@ Implementation flags: set `add_session_state_to_context=True` and `enable_agenti
 - Perplexity MCP: `MCPTools(command="npx -y @perplexity-ai/mcp-server", include_tools=["perplexity_search"])`
   - Env: `PERPLEXITY_API_KEY` (required), optional `PERPLEXITY_TIMEOUT_MS`.
   - Requires Node ≥ 18 and `npx`.
-- Image generation: `OpenAITools(enable_image_generation=True)` with only `generate_image`.
-  - Env: `OPENAI_API_KEY`.
+- Image generation: optional future step; currently VisualAgent drafts prompts instead of calling tools.
 - AgentOS: run without `reload=True` to avoid MCP lifecycle issues.
 
 ## Example Prompt
@@ -100,4 +99,3 @@ Implementation flags: set `add_session_state_to_context=True` and `enable_agenti
 - Autonomous multi‑turn self‑revisions without user approval.
 - Broad web browsing tools beyond Perplexity search.
 - Complex parallelization; we keep the flow linear for clarity.
-

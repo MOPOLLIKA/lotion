@@ -5,7 +5,7 @@ This package holds the single-team, stage-gated product studio described in `doc
 ## Team Members
 - **CoordinatorPM** (team leader instructions) – manages stages, handles approvals in casual language, and updates session state.
 - **ResearchAgent** – checks viability with Perplexity `perplexity_search` and returns a verdict with citations.
-- **VisualAgent** – shares three branded mockups using OpenAI image generation and keeps the tone laid-back.
+- **VisualAgent** – shares three branded mockups as descriptive briefs (no image calls yet) and keeps the tone laid-back.
 - **ProductAgent** – writes the v1 product spec, BOM, and open questions.
 - **SourcingAgent** – finds ingredients and manufacturers via Perplexity search.
 
@@ -18,7 +18,8 @@ The team stores session state with `add_session_state_to_context=True` and `enab
 Set these variables before running the team or the FastAPI app:
 
 - `OPENROUTER_API_KEY` – required for all OpenRouter models and the coordinator.
-- `OPENAI_API_KEY` – used by `OpenAITools` for VisualAgent image generation.
 - `PERPLEXITY_API_KEY` – enables the Perplexity MCP server (`npx -y @perplexity-ai/mcp-server`). Optional `PERPLEXITY_TIMEOUT_MS` overrides the default timeout.
+
+Image generation is currently disabled; when we re-enable it we’ll document the additional `OPENAI_API_KEY` dependency.
 
 Keep `AgentOS.serve` without `reload=True`; hot reload disrupts MCP lifecycle.

@@ -8,7 +8,6 @@ from agno.agent import Agent
 from agno.models.openrouter import OpenRouter
 from agno.team import Team
 from agno.tools.mcp import MCPTools
-from agno.tools.openai import OpenAITools
 
 
 def load_env_variables() -> None:
@@ -52,22 +51,6 @@ def create_perplexity_tools() -> MCPTools:
     )
 
 
-def create_image_tools() -> OpenAITools:
-    """Return OpenAI tools scoped to image generation only."""
-
-    if not os.environ.get("OPENAI_API_KEY"):
-        raise RuntimeError(
-            "OPENAI_API_KEY must be set to enable image generation for VisualAgent."
-        )
-
-    return OpenAITools(
-        enable_transcription=False,
-        enable_speech_generation=False,
-        enable_image_generation=True,
-        image_model="dall-e-3",
-    )
-
-
 def initial_session_state() -> dict:
     """Seed session state tracking stage gates and outputs."""
 
@@ -94,7 +77,6 @@ def initial_session_state() -> dict:
 
 
 perplexity_tools = create_perplexity_tools()
-image_tools = create_image_tools()
 
 
 research_agent = Agent(
@@ -125,11 +107,10 @@ visual_agent = Agent(
         Generate three distinct visual directions. For each option:
         - give a friendly nickname.
         - describe palette, typography vibe, and packaging cues in two bullet points.
-        - if you create an image, note the prompt and file path.
+        - suggest a future image prompt we could run (but do not call image tools now).
         Keep language informal ("here's a playful take" vs. corporate).
         """
     ).strip(),
-    tools=[image_tools],
     markdown=True,
 )
 
