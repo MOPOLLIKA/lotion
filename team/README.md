@@ -12,7 +12,7 @@ This package holds the single-team, stage-gated product studio described in `doc
 Approvals are conversational: phrases like “yeah, looks good, continue” are treated as green lights. Users can ask for tweaks with natural language (e.g. “hmm, can we adjust the packaging vibe?”) and the coordinator loops back before advancing the stage.
 
 ## Session State & Gates
-The team stores session state with `add_session_state_to_context=True` and `enable_agentic_state=True`. CoordinatorPM uses the helper tools to mutate state, so stage/approval changes persist. Stages progress `intake → viability → visuals → spec → sourcing → final` only after a casual approval is detected. See the JSON scaffold in `docs/TEAM_PLAN.md` for exact fields.
+The team stores session state with `add_session_state_to_context=True`, `enable_agentic_state=True`, and persists runs in a SQLite DB under `team/data/product_studio.db`. CoordinatorPM uses the helper tools to mutate state, so stage/approval changes persist across turns. Stages progress `intake → viability → visuals → spec → sourcing → final` only after a casual approval is detected. See the JSON scaffold in `docs/TEAM_PLAN.md` for exact fields.
 
 ## Environment
 Set these variables before running the team or the FastAPI app:

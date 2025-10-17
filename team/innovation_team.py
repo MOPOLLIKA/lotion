@@ -5,6 +5,7 @@ from pathlib import Path
 from textwrap import dedent
 
 from agno.agent import Agent
+from agno.db.sqlite import SqliteDb
 from agno.models.openrouter import OpenRouter
 from agno.team import Team
 from agno.tools.mcp import MCPTools
@@ -74,6 +75,15 @@ def initial_session_state() -> dict:
             "manufacturers": [],
         },
     }
+
+
+def team_database() -> SqliteDb:
+    """Ensure a writable sqlite database for multi-turn sessions."""
+
+    data_dir = Path(__file__).resolve().parent / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    db_file = data_dir / "product_studio.db"
+    return SqliteDb(db_file=str(db_file))
 
 
 STAGE_SEQUENCE = [
@@ -276,6 +286,12 @@ innovation_team = Team(
     enable_agentic_state=True,
     session_state=initial_session_state(),
     tools=[set_stage, set_awaiting, mark_approval, record_visual_choice],
+    db=team_database(),
+    add_history_to_context=True,
+    num_history_runs=3,
+    read_chat_history=True,
+    search_session_history=True,
+    num_history_sessions=2,
 )
 
 

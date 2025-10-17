@@ -71,6 +71,7 @@ Implementation flags: set `add_session_state_to_context=True` and `enable_agenti
 - Perplexity MCP: instantiate a fresh `MCPTools(command="npx -y @perplexity-ai/mcp-server", include_tools=["perplexity_search"])` per agent that needs it (ResearchAgent, SourcingAgent).
   - Env: `PERPLEXITY_API_KEY` (required), optional `PERPLEXITY_TIMEOUT_MS`.
   - Requires Node ≥ 18 and `npx`.
+- Persistence: back the team with `SqliteDb` stored under `team/data/product_studio.db`, and enable history flags (`add_history_to_context`, `num_history_runs`, `search_session_history`) so multi-turn chats keep context.
 - Image generation: optional future step; currently VisualAgent drafts prompts instead of calling tools.
 - AgentOS: run without `reload=True` to avoid MCP lifecycle issues.
 
