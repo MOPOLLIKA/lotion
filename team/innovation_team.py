@@ -15,6 +15,7 @@ from pathlib import Path
 from agno.agent import Agent
 from agno.models.openrouter import OpenRouter
 from agno.team import Team
+from agno.tools.mcp import MCPTools
 from agno.workflow import Workflow
 
 
@@ -36,6 +37,23 @@ def load_env_variables():
 
 load_env_variables()
 
+
+def create_perplexity_tools() -> MCPTools:
+    """Return MCP tools configured for the Perplexity API server."""
+
+    api_key = os.environ.get("PERPLEXITY_API_KEY")
+    if not api_key:
+        raise RuntimeError(
+            "PERPLEXITY_API_KEY must be set to enable the Perplexity MCP server."
+        )
+
+    env = {"PERPLEXITY_API_KEY": api_key}
+    timeout = os.environ.get("PERPLEXITY_TIMEOUT_MS")
+    if timeout:
+        env["PERPLEXITY_TIMEOUT_MS"] = timeout
+
+    return MCPTools(command="npx -y @perplexity-ai/mcp-server", env=env)
+
 # Core agents used by the team leader. Each agent uses the x-ai/grok-4-fast model via OpenRouter.
 research_agent = Agent(
     name="ResearchAgent",
@@ -44,8 +62,10 @@ research_agent = Agent(
     instructions=(
         "Study the market landscape for the product topic. Return 2-3 key trends, "
         "an overview of audience needs, and notable competitor moves. "
+        "Leverage the Perplexity MCP tools (search, research) for current data. "
         "Flag any open questions VisualiserAgent should clarify."
     ),
+    tools=[create_perplexity_tools()],
     markdown=True,
 )
 
@@ -80,8 +100,10 @@ academic_research_agent = Agent(
     instructions=(
         "Review ProductGenerationAgent's component list. "
         "Validate safety/effectiveness via academic or regulatory references. "
-        "Highlight any risks or missing data, citing sources when possible."
+        "Highlight any risks or missing data, citing sources when possible. "
+        "Use the Perplexity MCP tools to locate up-to-date publications."
     ),
+    tools=[create_perplexity_tools()],
     markdown=True,
 )
 
