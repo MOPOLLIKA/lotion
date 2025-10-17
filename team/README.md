@@ -1,19 +1,24 @@
-# Product Innovation Team
+# Product Studio Team
 
-This package wraps the Product Innovation Team workflow used by the AgentOS app. It defines a sequence of agents that collaborate on new product concepts, passing context step-by-step until a user-ready summary is produced.
+This package holds the single-team, stage-gated product studio described in `docs/TEAM_PLAN.md`. One coordinator runs the full pipeline end-to-end; there are no subteams or workflows.
 
-## Workflow Overview
-1. **ResearchAgent** – mines market trends, customer needs, and competitor moves for the brief. It now calls the Perplexity MCP server's `perplexity_search` tool for live results.
-2. **VisualiserAgent** – turns the research into a descriptive visual brief, including look, feel, and open questions.
-3. **BuildValidationTeam** – a sub-team that first drafts specs via ProductGenerationAgent, then validates ingredients/components with AcademicResearchAgent and appends the findings.
-4. **InterfaceAgent** – packages everything into a user-facing summary with recommended next steps.
+## Team Members
+- **CoordinatorPM** (team leader instructions) – manages stages, handles approvals in casual language, and updates session state.
+- **ResearchAgent** – checks viability with Perplexity `perplexity_search` and returns a verdict with citations.
+- **VisualAgent** – shares three branded mockups using OpenAI image generation and keeps the tone laid-back.
+- **ProductAgent** – writes the v1 product spec, BOM, and open questions.
+- **SourcingAgent** – finds ingredients and manufacturers via Perplexity search.
 
-All agents run via OpenRouter (`x-ai/grok-4-fast`). Research-oriented agents (ResearchAgent, AcademicResearchAgent) also load the Perplexity MCP server via `MCPTools`, but with only the `perplexity_search` tool enabled to keep outputs focused on concise search results. The workflow is reused both as a standalone script (`python -m team.innovation_team`) and inside the FastAPI app exposed by `agentos_app.py`.
+Approvals are conversational: phrases like “yeah, looks good, continue” are treated as green lights. Users can ask for tweaks with natural language (e.g. “hmm, can we adjust the packaging vibe?”) and the coordinator loops back before advancing the stage.
+
+## Session State & Gates
+The team stores session state with `add_session_state_to_context=True` and `enable_agentic_state=True`. Stages progress `intake → viability → visuals → spec → sourcing → final` only after a casual approval is detected. See the JSON scaffold in `docs/TEAM_PLAN.md` for exact fields.
 
 ## Environment
-Set the following environment variables before invoking the workflow:
+Set these variables before running the team or the FastAPI app:
 
-- `OPENROUTER_API_KEY` – needed for Agno's OpenRouter models.
-- `PERPLEXITY_API_KEY` – required for the Perplexity MCP server (`npx -y @perplexity-ai/mcp-server`). Optionally set `PERPLEXITY_TIMEOUT_MS` to override the default 5-minute timeout.
+- `OPENROUTER_API_KEY` – required for all OpenRouter models and the coordinator.
+- `OPENAI_API_KEY` – used by `OpenAITools` for VisualAgent image generation.
+- `PERPLEXITY_API_KEY` – enables the Perplexity MCP server (`npx -y @perplexity-ai/mcp-server`). Optional `PERPLEXITY_TIMEOUT_MS` overrides the default timeout.
 
-When running the FastAPI app with MCP tools enabled, avoid `reload=True` with `AgentOS.serve`, as hot reloading can break MCP connections.
+Keep `AgentOS.serve` without `reload=True`; hot reload disrupts MCP lifecycle.

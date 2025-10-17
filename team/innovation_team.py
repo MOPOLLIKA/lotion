@@ -1,26 +1,19 @@
-"""Simple Agno team and workflow wired to OpenRouter models.
-
-Set `OPENROUTER_API_KEY` in your environment before running this module:
-
-    export OPENROUTER_API_KEY=sk-...
-
-Run the workflow example:
-
-    python -m team.innovation_team
-"""
+"""Product Studio Team implementation aligned with TEAM_PLAN.md."""
 
 import os
 from pathlib import Path
+from textwrap import dedent
 
 from agno.agent import Agent
 from agno.models.openrouter import OpenRouter
 from agno.team import Team
 from agno.tools.mcp import MCPTools
-from agno.workflow import Workflow
+from agno.tools.openai import OpenAITools
 
 
-def load_env_variables():
+def load_env_variables() -> None:
     """Populate os.environ from a local .env file if keys are missing."""
+
     env_path = Path(__file__).resolve().parent / ".env"
     if not env_path.exists():
         return
@@ -58,120 +51,186 @@ def create_perplexity_tools() -> MCPTools:
         include_tools=["perplexity_search"],
     )
 
-# Core agents used by the team leader. Each agent uses the x-ai/grok-4-fast model via OpenRouter.
+
+def create_image_tools() -> OpenAITools:
+    """Return OpenAI tools scoped to image generation only."""
+
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError(
+            "OPENAI_API_KEY must be set to enable image generation for VisualAgent."
+        )
+
+    return OpenAITools(
+        enable_transcription=False,
+        enable_speech_generation=False,
+        enable_image_generation=True,
+        image_model="dall-e-3",
+    )
+
+
+def initial_session_state() -> dict:
+    """Seed session state tracking stage gates and outputs."""
+
+    return {
+        "stage": "intake",
+        "awaiting_approval": False,
+        "approvals": {"viability": False, "visuals": False, "spec": False},
+        "decision": {
+            "status": "pending",
+            "confidence": 0.0,
+            "reasons": [],
+            "assumptions": [],
+            "open_questions": [],
+        },
+        "selected_visual": {"option_id": None, "notes": ""},
+        "outputs": {
+            "images": [],
+            "spec": None,
+            "bom": [],
+            "ingredients": [],
+            "manufacturers": [],
+        },
+    }
+
+
+perplexity_tools = create_perplexity_tools()
+image_tools = create_image_tools()
+
+
 research_agent = Agent(
     name="ResearchAgent",
-    role="Explores market trends, competitor moves, and consumer insights.",
+    role="Evaluate market viability with grounded citations.",
     model=OpenRouter(id="x-ai/grok-4-fast"),
-    instructions=(
-        "Study the market landscape for the product topic. Return 2-3 key trends, "
-        "an overview of audience needs, and notable competitor moves. "
-        "Leverage the Perplexity MCP search tool for current data. "
-        "Flag any open questions VisualiserAgent should clarify."
-    ),
-    tools=[create_perplexity_tools()],
+    instructions=dedent(
+        """
+        Investigate the concept using Perplexity search only. Produce:
+        - viability verdict (viable / not_viable / uncertain) with a short vibe-check summary.
+        - confidence score out of 100.
+        - three strongest supporting or blocking signals with citations.
+        - any blockers that require user input before moving forward.
+        Keep the tone plain language and explain like a teammate.
+        """
+    ).strip(),
+    tools=[perplexity_tools],
     markdown=True,
 )
 
-visualiser_agent = Agent(
-    name="VisualiserAgent",
-    role="Sketches the product concept through descriptive mockups.",
+
+visual_agent = Agent(
+    name="VisualAgent",
+    role="Craft lightweight mockups and brand direction options.",
     model=OpenRouter(id="x-ai/grok-4-fast"),
-    instructions=(
-        "Translate ResearchAgent insights into a concise visual brief. "
-        "Describe look, feel, hero features, and packaging notes. "
-        "List assumptions that ProductGenerationAgent must validate."
-    ),
+    instructions=dedent(
+        """
+        Generate three distinct visual directions. For each option:
+        - give a friendly nickname.
+        - describe palette, typography vibe, and packaging cues in two bullet points.
+        - if you create an image, note the prompt and file path.
+        Keep language informal ("here's a playful take" vs. corporate).
+        """
+    ).strip(),
+    tools=[image_tools],
     markdown=True,
 )
 
-product_generation_agent = Agent(
-    name="ProductGenerationAgent",
-    role="Outlines product specs, build steps, and launch checklist.",
+
+product_agent = Agent(
+    name="ProductAgent",
+    role="Draft a buildable product spec and lightweight plan.",
     model=OpenRouter(id="x-ai/grok-4-fast"),
-    instructions=(
-        "Define the product version 1. Include bill of materials, core specs, "
-        "build sequence, and a lightweight go-to-market outline. "
-        "Provide a bullet list of ingredients/components needing validation."
-    ),
+    instructions=dedent(
+        """
+        Turn the approved concept into a concise spec:
+        - core value prop, target user notes, success criteria.
+        - BOM table with draft cost targets.
+        - compliance or testing watch-outs.
+        - tiny action list of what still needs answering.
+        Don't invent sourcing details—leave that for SourcingAgent.
+        """
+    ).strip(),
     markdown=True,
 )
 
-academic_research_agent = Agent(
-    name="AcademicResearchAgent",
-    role="Validates ingredients or components with academic sources.",
+
+sourcing_agent = Agent(
+    name="SourcingAgent",
+    role="Find ingredients and manufacturing partners.",
     model=OpenRouter(id="x-ai/grok-4-fast"),
-    instructions=(
-        "Review ProductGenerationAgent's component list. "
-        "Validate safety/effectiveness via academic or regulatory references. "
-        "Highlight any risks or missing data, citing sources when possible. "
-        "Use the Perplexity MCP search tool to locate up-to-date publications."
-    ),
-    tools=[create_perplexity_tools()],
+    instructions=dedent(
+        """
+        Use Perplexity search to compile:
+        - full ingredient/inputs list with quick justification per item.
+        - 5–10 manufacturer leads (company, region, MOQ, strengths, contact link).
+        - a short email/DM template for outreach.
+        Flag gaps or lead quality issues plainly.
+        """
+    ).strip(),
+    tools=[perplexity_tools],
     markdown=True,
 )
 
-interface_agent = Agent(
-    name="InterfaceAgent",
-    role="Summarizes outputs for the user and recommends next steps.",
-    model=OpenRouter(id="x-ai/grok-4-fast"),
-    instructions=(
-        "Synthesize all previous outputs into a user-facing deliverable. "
-        "Provide a clean summary, key decisions, validated ingredient notes, "
-        "and the immediate next actions."
-    ),
-    markdown=True,
+
+APPROVAL_CUES = (
+    "yeah",
+    "yep",
+    "sounds good",
+    "looks good",
+    "love it",
+    "let's do it",
+    "go ahead",
+    "continue",
+    "ship it",
+    "run it",
 )
 
-# Sub-team handles product planning followed by academic validation.
-build_validation_team = Team(
-    name="BuildValidationTeam",
-    members=[product_generation_agent, academic_research_agent],
-    model=OpenRouter(id="x-ai/grok-4-fast"),
-    instructions=(
-        "First delegate to ProductGenerationAgent to draft specs, "
-        "then delegate to AcademicResearchAgent to validate the ingredient list. "
-        "Ensure validation notes are appended to the specs before handing off."
-    ),
-    show_members_responses=True,
-)
 
-# Top-level team orchestrating the sequential flow.
+TEAM_INSTRUCTIONS = dedent(
+    """
+    You are CoordinatorPM leading the Product Studio Team. Use natural, human language—no formal sign-offs.
+
+    Stage order: intake → viability → visuals → spec → sourcing → final. Session state tells you where we are. Only move forward when the user vibes with the current stage.
+
+    Approvals:
+    - Treat casual phrases like {approval_examples} as a thumbs-up. Examples: "yeah I like that", "sounds good", "go ahead".
+    - If user hesitates ("hmm", "not sure", "can we tweak"), call the specialist again or ask clarifying questions.
+    - When you detect approval, update session_state:
+        awaiting_approval = False
+        approvals[stage] = True (for viability/visuals/spec)
+        advance to the next stage
+
+    Stage duties:
+    - intake: recap the brief, fill gaps, set awaiting_approval=True until user confirms.
+    - viability: delegate to ResearchAgent once you've got enough context. Summarize their take and wait for a chill approval.
+    - visuals: only after viability approval. Delegate to VisualAgent, present options, let the user pick casually ("option 2 please"). Capture pick in session_state.selected_visual.
+    - spec: after visuals approval. Have ProductAgent draft the spec, highlight open questions, pause for sign-off.
+    - sourcing: after spec approval. Delegate to SourcingAgent. Encourage the user to choose leads or ask for refinements.
+    - final: stitch everything into a tidy recap with next moves. Wrap warmly, no stiff corporate tone.
+
+    Never loop stages automatically. If user says "revise <stage>" or gives feedback, revisit that stage before advancing. Keep answers short-ish, collaborative, and reference session_state so everyone stays aligned.
+    """
+).format(approval_examples=", ".join(APPROVAL_CUES))
+
+
 innovation_team = Team(
-    name="ProductInnovationTeam",
-    members=[
-        research_agent,
-        visualiser_agent,
-        build_validation_team,
-        interface_agent,
-    ],
+    name="ProductStudioTeam",
+    members=[research_agent, visual_agent, product_agent, sourcing_agent],
     model=OpenRouter(id="x-ai/grok-4-fast"),
-    instructions=(
-        "Run a sequential pipeline: ResearchAgent → VisualiserAgent → "
-        "BuildValidationTeam → InterfaceAgent. "
-        "Always pass the prior step's output as context to the next actor."
-    ),
+    instructions=TEAM_INSTRUCTIONS,
     show_members_responses=True,
-)
-
-# Simple sequential workflow that reuses the same agents.
-innovation_workflow = Workflow(
-    name="InnovationPipelineWorkflow",
-    description="Basic sequential flow from research to user-facing summary.",
-    steps=[
-        research_agent,
-        visualiser_agent,
-        build_validation_team,
-        interface_agent,
-    ],
+    add_session_state_to_context=True,
+    enable_agentic_state=True,
+    session_state=initial_session_state(),
 )
 
 
-def run_example():
-    """Fire the workflow with a demo product brief."""
-    prompt = "Ideate a moisturizing lotion for trail runners in cold climates."
-    innovation_workflow.print_response(prompt, markdown=True)
+def run_example() -> None:
+    """Fire the team with a sample brief."""
+
+    prompt = "I want to create a lavender soap for Gen Z trail runners."
+    innovation_team.print_response(prompt, markdown=True)
 
 
-if __name__ == "__main__":
-    run_example()
+__all__ = [
+    "innovation_team",
+    "run_example",
+]
