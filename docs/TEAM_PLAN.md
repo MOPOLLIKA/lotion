@@ -33,7 +33,7 @@ A concise, human-in-the-loop agent team for product ideation through sourcing. O
 ## Agents (Single Team, No Subteams)
 - CoordinatorPM
   - Orchestrates stages, enforces gates, writes/reads session state, asks for approvals.
-  - Calls helper tools (`set_stage`, `set_awaiting`, `mark_approval`, `record_visual_choice`) so changes persist.
+  - Keeps track of stage/approval shifts via the shared session state so the rest of the team stays aligned.
   - Never advances stage without explicit approval; supports “revise <stage>”.
 - ResearchAgent
   - Market/competitive analysis, viability scoring, citations.
@@ -71,7 +71,7 @@ Implementation flags: set `add_session_state_to_context=True` and `enable_agenti
 - Perplexity MCP: instantiate a fresh `MCPTools(command="npx -y @perplexity-ai/mcp-server", include_tools=["perplexity_search"])` per agent that needs it (ResearchAgent, SourcingAgent).
   - Env: `PERPLEXITY_API_KEY` (required), optional `PERPLEXITY_TIMEOUT_MS`.
   - Requires Node ≥ 18 and `npx`.
-- Persistence: back the team with `SqliteDb` stored under `team/data/product_studio.db`, and enable history flags (`add_history_to_context`, `num_history_runs`, `search_session_history`) so multi-turn chats keep context.
+- Persistence: back the team with `SqliteDb` stored under `team/data/product_studio.db` so multi-turn chats persist without extra setup.
 - Image generation: optional future step; currently VisualAgent drafts prompts instead of calling tools.
 - AgentOS: run without `reload=True` to avoid MCP lifecycle issues.
 
