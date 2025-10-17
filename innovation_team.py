@@ -9,10 +9,32 @@ Run the workflow example:
     python innovation_team.py
 """
 
+import os
+from pathlib import Path
+
 from agno.agent import Agent
 from agno.models.openrouter import OpenRouter
 from agno.team import Team
 from agno.workflow import Workflow
+
+
+def load_env_variables():
+    """Populate os.environ from a local .env file if keys are missing."""
+    env_path = Path(__file__).resolve().parent / ".env"
+    if not env_path.exists():
+        return
+
+    for raw_line in env_path.read_text().splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('\'"')
+        os.environ.setdefault(key, value)
+
+
+load_env_variables()
 
 # Core agents used by the team leader. Each agent uses the x-ai/grok-4-fast model via OpenRouter.
 research_agent = Agent(
