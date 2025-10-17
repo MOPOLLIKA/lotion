@@ -14,11 +14,11 @@ from agno.models.openrouter import OpenRouter
 from agno.team import Team
 from agno.workflow import Workflow
 
-# Core agents used by the team leader. Each agent gets the same OpenRouter model.
+# Core agents used by the team leader. Each agent uses the x-ai/grok-4-fast model via OpenRouter.
 research_agent = Agent(
     name="ResearchAgent",
     role="Explores market trends, competitor moves, and consumer insights.",
-    model=OpenRouter(id="openai/gpt-4o-mini"),
+    model=OpenRouter(id="x-ai/grok-4-fast"),
     instructions=(
         "Study the market landscape for the product topic. Return 2-3 key trends, "
         "an overview of audience needs, and notable competitor moves. "
@@ -30,7 +30,7 @@ research_agent = Agent(
 visualiser_agent = Agent(
     name="VisualiserAgent",
     role="Sketches the product concept through descriptive mockups.",
-    model=OpenRouter(id="openai/gpt-4o-mini"),
+    model=OpenRouter(id="x-ai/grok-4-fast"),
     instructions=(
         "Translate ResearchAgent insights into a concise visual brief. "
         "Describe look, feel, hero features, and packaging notes. "
@@ -42,7 +42,7 @@ visualiser_agent = Agent(
 product_generation_agent = Agent(
     name="ProductGenerationAgent",
     role="Outlines product specs, build steps, and launch checklist.",
-    model=OpenRouter(id="openai/gpt-4o-mini"),
+    model=OpenRouter(id="x-ai/grok-4-fast"),
     instructions=(
         "Define the product version 1. Include bill of materials, core specs, "
         "build sequence, and a lightweight go-to-market outline. "
@@ -54,7 +54,7 @@ product_generation_agent = Agent(
 academic_research_agent = Agent(
     name="AcademicResearchAgent",
     role="Validates ingredients or components with academic sources.",
-    model=OpenRouter(id="openai/gpt-4o-mini"),
+    model=OpenRouter(id="x-ai/grok-4-fast"),
     instructions=(
         "Review ProductGenerationAgent's component list. "
         "Validate safety/effectiveness via academic or regulatory references. "
@@ -66,7 +66,7 @@ academic_research_agent = Agent(
 interface_agent = Agent(
     name="InterfaceAgent",
     role="Summarizes outputs for the user and recommends next steps.",
-    model=OpenRouter(id="openai/gpt-4o-mini"),
+    model=OpenRouter(id="x-ai/grok-4-fast"),
     instructions=(
         "Synthesize all previous outputs into a user-facing deliverable. "
         "Provide a clean summary, key decisions, validated ingredient notes, "
@@ -79,7 +79,7 @@ interface_agent = Agent(
 build_validation_team = Team(
     name="BuildValidationTeam",
     members=[product_generation_agent, academic_research_agent],
-    model=OpenRouter(id="openai/gpt-4o-mini"),
+    model=OpenRouter(id="x-ai/grok-4-fast"),
     instructions=(
         "First delegate to ProductGenerationAgent to draft specs, "
         "then delegate to AcademicResearchAgent to validate the ingredient list. "
@@ -97,7 +97,7 @@ innovation_team = Team(
         build_validation_team,
         interface_agent,
     ],
-    model=OpenRouter(id="openai/gpt-4o-mini"),
+    model=OpenRouter(id="x-ai/grok-4-fast"),
     instructions=(
         "Run a sequential pipeline: ResearchAgent → VisualiserAgent → "
         "BuildValidationTeam → InterfaceAgent. "
