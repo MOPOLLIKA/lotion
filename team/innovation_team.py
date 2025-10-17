@@ -30,6 +30,12 @@ def load_env_variables() -> None:
 
 load_env_variables()
 
+# Some Agno model adapters (including OpenRouter) expect OPENAI_API_KEY to be set
+# because they re-use the OpenAI python client under the hood. Re-use the
+# OpenRouter key so we don't need a separate secret.
+if os.environ.get("OPENROUTER_API_KEY") and not os.environ.get("OPENAI_API_KEY"):
+    os.environ.setdefault("OPENAI_API_KEY", os.environ["OPENROUTER_API_KEY"])
+
 
 def create_perplexity_tools() -> MCPTools:
     """Return MCP tools configured for the Perplexity API server."""

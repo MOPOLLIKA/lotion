@@ -17,7 +17,7 @@ The team stores session state with `add_session_state_to_context=True`, `enable_
 ## Environment
 Set these variables before running the team or the FastAPI app:
 
-- `OPENROUTER_API_KEY` – required for all OpenRouter models and the coordinator.
+- `OPENROUTER_API_KEY` – required for all OpenRouter models and the coordinator. (We auto-populate `OPENAI_API_KEY` from this so you don't need a separate key.)
 - `PERPLEXITY_API_KEY` – enables the Perplexity MCP server (`npx -y @perplexity-ai/mcp-server`). Optional `PERPLEXITY_TIMEOUT_MS` overrides the default timeout.
 
 Image generation is currently disabled; when we re-enable it we’ll document the additional `OPENAI_API_KEY` dependency.
