@@ -52,7 +52,11 @@ def create_perplexity_tools() -> MCPTools:
     if timeout:
         env["PERPLEXITY_TIMEOUT_MS"] = timeout
 
-    return MCPTools(command="npx -y @perplexity-ai/mcp-server", env=env)
+    return MCPTools(
+        command="npx -y @perplexity-ai/mcp-server",
+        env=env,
+        include_tools=["perplexity_search"],
+    )
 
 # Core agents used by the team leader. Each agent uses the x-ai/grok-4-fast model via OpenRouter.
 research_agent = Agent(
@@ -62,7 +66,7 @@ research_agent = Agent(
     instructions=(
         "Study the market landscape for the product topic. Return 2-3 key trends, "
         "an overview of audience needs, and notable competitor moves. "
-        "Leverage the Perplexity MCP tools (search, research) for current data. "
+        "Leverage the Perplexity MCP search tool for current data. "
         "Flag any open questions VisualiserAgent should clarify."
     ),
     tools=[create_perplexity_tools()],
@@ -101,7 +105,7 @@ academic_research_agent = Agent(
         "Review ProductGenerationAgent's component list. "
         "Validate safety/effectiveness via academic or regulatory references. "
         "Highlight any risks or missing data, citing sources when possible. "
-        "Use the Perplexity MCP tools to locate up-to-date publications."
+        "Use the Perplexity MCP search tool to locate up-to-date publications."
     ),
     tools=[create_perplexity_tools()],
     markdown=True,
