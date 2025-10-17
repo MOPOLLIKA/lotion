@@ -12,20 +12,26 @@ from agno.tools.mcp import MCPTools
 
 
 def load_env_variables() -> None:
-    """Populate os.environ from a local .env file if keys are missing."""
+    """Populate os.environ from project-level .env files if keys are missing."""
 
-    env_path = Path(__file__).resolve().parent / ".env"
-    if not env_path.exists():
-        return
+    env_paths = [
+        Path(__file__).resolve().parent.parent / ".env",  # project root
+        Path(__file__).resolve().parent / ".env",  # team-specific overrides
+    ]
 
-    for raw_line in env_path.read_text().splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
+    for env_path in env_paths:
+        if not env_path.exists():
             continue
-        key, value = line.split("=", 1)
-        key = key.strip()
-        value = value.strip().strip('\'"')
-        os.environ.setdefault(key, value)
+
+        for raw_line in env_path.read_text().splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip().strip('\'"')
+            if key and value:
+                os.environ.setdefault(key, value)
 
 
 load_env_variables()
