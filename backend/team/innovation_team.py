@@ -324,7 +324,6 @@ def record_manufacturers(session_state, manufacturers: str) -> str:
 
 research_tools = create_perplexity_tools()
 sourcing_tools = create_perplexity_tools()
-sourcing_tools = create_perplexity_tools()
 
 research_agent = Agent(
     name="ResearchAgent",
