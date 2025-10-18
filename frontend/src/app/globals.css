@@ -120,3 +120,13 @@
     @apply bg-background text-foreground;
   }
 }
+
+.nextjs-portal {
+  display: none !important;
+}
+
+@layer utilities {
+  .animate-spin-slow {
+    animation: spin 2.5s linear infinite;
+  }
+}

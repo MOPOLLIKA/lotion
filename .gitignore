@@ -2,7 +2,7 @@
 .env
 __pycache__/
 modelcontextprotocol/
-team/.env
-team/data/
+backend/team/.env
+backend/team/data/
 frontend/node_modules
 frontend/.next
