@@ -7,6 +7,7 @@ import { sendMessageToAgentOS } from "@/lib/agentos";
 export default function Home() {
   const [input, setInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [responseText, setResponseText] = useState<string | null>(null);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -17,12 +18,17 @@ export default function Home() {
 
     setIsSubmitting(true);
     try {
+      setResponseText(null);
       const prompt = `Run viability research as ResearchAgent for this idea: ${message}`;
       const result = await sendMessageToAgentOS({ message: prompt });
       console.info("ResearchAgent response:", result);
       setInput("");
+      setResponseText(result.text || "ResearchAgent did not return any content.");
     } catch (error) {
       console.error("AgentOS chat error", error);
+      const fallback =
+        error instanceof Error ? error.message : "We ran into an unexpected issue.";
+      setResponseText(`Error: ${fallback}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -35,7 +41,7 @@ export default function Home() {
           <div className="h-32 w-32 rounded-full border-4 border-white/40 border-t-white animate-spin-slow" />
           <p className="text-white text-xl tracking-wide uppercase">roasting</p>
         </div>
-      ) : (
+      ) : !responseText ? (
         <form
           onSubmit={handleSubmit}
           className="relative w-full max-w-xl px-6"
@@ -55,6 +61,15 @@ export default function Home() {
             <ArrowRight className="h-5 w-5" />
           </button>
         </form>
+      ) : null}
+      {!isSubmitting && responseText && (
+        <div className="mt-10 w-full max-w-2xl px-6">
+          <div className="max-h-[60vh] overflow-y-auto rounded-3xl border border-white/40 bg-white/50 p-6 text-black backdrop-blur-md">
+            <pre className="whitespace-pre-wrap text-base leading-relaxed text-black/90">
+              {responseText}
+            </pre>
+          </div>
+        </div>
       )}
     </main>
   );
