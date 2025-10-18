@@ -17,9 +17,9 @@ The team stores session state with `add_session_state_to_context=True`, `enable_
 ## Environment
 Set these variables before running the team or the FastAPI app:
 
-- `OPENROUTER_API_KEY` – required for all OpenRouter models and the coordinator. (We auto-populate `OPENAI_API_KEY` from this so you don't need a separate key.)
+- `PERPLEXITY_API_KEY` – required for all Perplexity Sonar models and the MCP search tool. We mirror this value into `OPENAI_API_KEY` for adapters that expect the OpenAI client conventions.
   Place this in the project-level `.env` (repo root); the team loader pulls in both the root and `team/.env` files automatically.
-- `PERPLEXITY_API_KEY` – enables the Perplexity MCP server (`npx -y @perplexity-ai/mcp-server`). Optional `PERPLEXITY_TIMEOUT_MS` overrides the default timeout.
+- `PERPLEXITY_TIMEOUT_MS` (optional) – overrides the default timeout for the Perplexity MCP server.
 
 Image generation is currently disabled; when we re-enable it we’ll document the additional `OPENAI_API_KEY` dependency.
 

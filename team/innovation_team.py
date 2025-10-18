@@ -1,12 +1,13 @@
 """Product Studio Team implementation aligned with TEAM_PLAN.md."""
 
 import os
+import warnings
 from pathlib import Path
 from textwrap import dedent
 
 from agno.agent import Agent
 from agno.db.sqlite import SqliteDb
-from agno.models.openrouter import OpenRouter
+from agno.models.perplexity import Perplexity
 from agno.team import Team
 from agno.tools.mcp import MCPTools
 
@@ -36,11 +37,84 @@ def load_env_variables() -> None:
 
 load_env_variables()
 
-# Some Agno model adapters (including OpenRouter) expect OPENAI_API_KEY to be set
-# because they re-use the OpenAI python client under the hood. Re-use the
-# OpenRouter key so we don't need a separate secret.
-if os.environ.get("OPENROUTER_API_KEY") and not os.environ.get("OPENAI_API_KEY"):
-    os.environ.setdefault("OPENAI_API_KEY", os.environ["OPENROUTER_API_KEY"])
+# Some Agno model adapters (including the Perplexity client) expect
+# OPENAI_API_KEY to be set because they re-use the OpenAI python client under
+# the hood. Re-use the Perplexity key so we don't need a separate secret.
+if os.environ.get("PERPLEXITY_API_KEY") and not os.environ.get("OPENAI_API_KEY"):
+    os.environ.setdefault("OPENAI_API_KEY", os.environ["PERPLEXITY_API_KEY"])
+
+
+VALID_PERPLEXITY_MODELS = {
+    "sonar",
+    "sonar-pro",
+    "sonar-reasoning",
+    "sonar-reasoning-pro",
+    "sonar-deep-research",
+}
+
+LEGACY_PERPLEXITY_MODELS = {
+    "sonar-small": "sonar",
+    "sonar-small-chat": "sonar",
+    "sonar-small-online": "sonar",
+    "sonar-medium": "sonar",
+    "sonar-medium-chat": "sonar",
+    "sonar-medium-online": "sonar",
+    "sonar-large": "sonar-pro",
+    "sonar-large-chat": "sonar-pro",
+    "sonar-large-online": "sonar-pro",
+    "sonar-huge": "sonar-reasoning",
+    "sonar-huge-chat": "sonar-reasoning",
+    "sonar-huge-online": "sonar-reasoning",
+}
+
+
+def normalize_perplexity_model(model_name: str) -> str:
+    """Return a supported Perplexity model id, remapping legacy aliases when needed."""
+
+    candidate = (model_name or "").strip()
+    if not candidate:
+        return candidate
+
+    lowered = candidate.lower()
+    if lowered in LEGACY_PERPLEXITY_MODELS:
+        return LEGACY_PERPLEXITY_MODELS[lowered]
+    if lowered in VALID_PERPLEXITY_MODELS:
+        return lowered
+    return candidate
+
+
+def resolve_perplexity_model(env_key: str, fallback: str) -> str:
+    """Return the model id to use, warning when remapping legacy identifiers."""
+
+    raw = os.environ.get(env_key)
+    if raw:
+        model_id = normalize_perplexity_model(raw)
+        if model_id != raw:
+            warnings.warn(
+                f"{env_key}='{raw}' mapped to '{model_id}' because Perplexity renamed this model.",
+                stacklevel=2,
+            )
+            os.environ[env_key] = model_id
+        return model_id
+
+    return normalize_perplexity_model(fallback)
+
+
+DEFAULT_COORDINATOR_MODEL = resolve_perplexity_model(
+    "PERPLEXITY_COORDINATOR_MODEL", "sonar-pro"
+)
+DEFAULT_RESEARCH_MODEL = resolve_perplexity_model(
+    "PERPLEXITY_RESEARCH_MODEL", "sonar"
+)
+DEFAULT_VISUAL_MODEL = resolve_perplexity_model(
+    "PERPLEXITY_VISUAL_MODEL", "sonar-pro"
+)
+DEFAULT_PRODUCT_MODEL = resolve_perplexity_model(
+    "PERPLEXITY_PRODUCT_MODEL", "sonar-reasoning"
+)
+DEFAULT_SOURCING_MODEL = resolve_perplexity_model(
+    "PERPLEXITY_SOURCING_MODEL", "sonar-reasoning"
+)
 
 
 def create_perplexity_tools() -> MCPTools:
@@ -250,15 +324,12 @@ def record_manufacturers(session_state, manufacturers: str) -> str:
 
 research_tools = create_perplexity_tools()
 sourcing_tools = create_perplexity_tools()
-
-
 sourcing_tools = create_perplexity_tools()
-
 
 research_agent = Agent(
     name="ResearchAgent",
     role="Evaluate market viability with grounded citations.",
-    model=OpenRouter(id="x-ai/grok-4-fast", reasoning_effort="medium"),
+    model=Perplexity(id=DEFAULT_RESEARCH_MODEL),
     reasoning=True,
     tool_choice="required",
     instructions=dedent(
@@ -280,7 +351,7 @@ research_agent = Agent(
 visual_agent = Agent(
     name="VisualAgent",
     role="Craft lightweight mockups and brand direction options.",
-    model=OpenRouter(id="x-ai/grok-4-fast", reasoning_effort="medium"),
+    model=Perplexity(id=DEFAULT_VISUAL_MODEL),
     reasoning=True,
     instructions=dedent(
         """
@@ -298,7 +369,7 @@ visual_agent = Agent(
 product_agent = Agent(
     name="ProductAgent",
     role="Draft a buildable product spec and lightweight plan.",
-    model=OpenRouter(id="x-ai/grok-4-fast", reasoning_effort="medium"),
+    model=Perplexity(id=DEFAULT_PRODUCT_MODEL),
     reasoning=True,
     instructions=dedent(
         """
@@ -317,7 +388,7 @@ product_agent = Agent(
 sourcing_agent = Agent(
     name="SourcingAgent",
     role="Find ingredients and manufacturing partners.",
-    model=OpenRouter(id="x-ai/grok-4-fast", reasoning_effort="medium"),
+    model=Perplexity(id=DEFAULT_SOURCING_MODEL),
     reasoning=True,
     instructions=dedent(
         """
@@ -409,7 +480,7 @@ TEAM_INSTRUCTIONS = dedent(
 innovation_team = Team(
     name="ProductStudioTeam",
     members=[research_agent, visual_agent, product_agent, sourcing_agent],
-    model=OpenRouter(id="x-ai/grok-4-fast"),
+    model=Perplexity(id=DEFAULT_COORDINATOR_MODEL),
     instructions=TEAM_INSTRUCTIONS,
     show_members_responses=True,
     share_member_interactions=True,
