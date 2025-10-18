@@ -1,9 +1,9 @@
 """Run the product innovation team inside an AgentOS FastAPI app.
 
 Usage:
-    # Install dependencies and set PERPLEXITY_API_KEY first
+    # Install dependencies and set OPENROUTER_API_KEY first
     pip install agno fastapi[standard] uvicorn
-    export PERPLEXITY_API_KEY=sk-...
+    export OPENROUTER_API_KEY=sk-...
 
     python agentos_app.py
 
