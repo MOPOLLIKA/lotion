@@ -261,6 +261,8 @@ research_agent = Agent(
     model=OpenRouter(id="x-ai/grok-4-fast", reasoning_effort="medium"),
     reasoning=True,
     tool_choice="required",
+    add_datetime_to_context=True,
+    timezone_identifier="Etc/UTC",
     instructions=dedent(
         """
         Investigate the concept using Perplexity search only. Produce:
