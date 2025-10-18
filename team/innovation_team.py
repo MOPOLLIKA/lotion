@@ -445,3 +445,12 @@ __all__ = [
     "innovation_team",
     "run_example",
 ]
+
+# --- add at bottom of the file ---
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-m", "--message",
+                        default="I want to create a lavender soap for Gen Z trail runners.")
+    args = parser.parse_args()
+    innovation_team.print_response(args.message, markdown=True)
