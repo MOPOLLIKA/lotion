@@ -4,75 +4,56 @@ import React, { useState, useRef } from "react";
 import { PromptInputBox } from "@/components/ui/ai-prompt-box";
 import { ChatInterface } from "@/components/chat-interface";
 import { motion, AnimatePresence } from "framer-motion";
-import { BaseCard, ProductExamplesCard } from "@/components/cards";
+import { BaseCard } from "@/components/cards";
+import { sendMessageToAgentOS } from "@/lib/agentos";
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [showChat, setShowChat] = useState(false);
-  const [, setFirstMessage] = useState("");
   const chatInterfaceRef = useRef<{ addAssistantMessage: (content: string, cards?: BaseCard[]) => void }>(null);
+  const sessionIdRef = useRef<string | null>(null);
 
   const handleSendMessage = async (message: string, files?: File[]) => {
     console.log('Message:', message);
     console.log('Files:', files);
-    
+
     setIsLoading(true);
     
     // If this is the first message, transition to chat interface
     if (!showChat) {
-      setFirstMessage(message);
       setShowChat(true);
     }
-    
-    // Simulate AI response
-    setTimeout(() => {
-      const response = `I received your message: "${message}". This is a simulated AI response. In a real implementation, you would connect this to your AI backend service.`;
-      
-      // Create sample product examples card if message contains "product" or "show me"
-      let cards: BaseCard[] = [];
-      if (message.toLowerCase().includes('product') || message.toLowerCase().includes('show me')) {
-        const productCard: ProductExamplesCard = {
-          id: `product-card-${Date.now()}`,
-          type: "product_examples",
-          title: "Product Examples",
-          timestamp: new Date(),
-          products: [
-            {
-              id: "1",
-              name: "Wireless Bluetooth Headphones",
-              description: "Premium noise-canceling headphones with 30-hour battery life",
-              imageUrl: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300&h=300&fit=crop",
-              price: "$199.99",
-              category: "Electronics",
-              rating: 4.8,
-              url: "https://example.com/product/1"
-            },
-            {
-              id: "2", 
-              name: "Smart Fitness Watch",
-              description: "Track your health and fitness with advanced sensors",
-              imageUrl: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=300&h=300&fit=crop",
-              price: "$299.99",
-              category: "Wearables",
-              rating: 4.6,
-              url: "https://example.com/product/2"
-            }
-          ]
-        };
-        cards = [productCard];
+
+    try {
+      const result = await sendMessageToAgentOS({
+        message,
+        files,
+        sessionId: sessionIdRef.current,
+      });
+
+      if (result.sessionId) {
+        sessionIdRef.current = result.sessionId;
       }
-      
+
+      const assistantReply = result.text || "The assistant responded without any content.";
+
       if (chatInterfaceRef.current) {
-        chatInterfaceRef.current.addAssistantMessage(response, cards);
+        chatInterfaceRef.current.addAssistantMessage(assistantReply);
       }
-      
+    } catch (error) {
+      console.error("AgentOS chat error", error);
+      const fallback =
+        error instanceof Error ? error.message : "We ran into an unexpected issue.";
+      if (chatInterfaceRef.current) {
+        chatInterfaceRef.current.addAssistantMessage(`Error: ${fallback}`);
+      }
+    } finally {
       setIsLoading(false);
-    }, 2000);
+    }
   };
 
   const handleBackToPrompt = () => {
     setShowChat(false);
-    setFirstMessage("");
   };
 
   return (
