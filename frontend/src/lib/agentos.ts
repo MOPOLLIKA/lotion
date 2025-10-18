@@ -3,6 +3,7 @@ const DEFAULT_TEAM_ID = "productstudioteam";
 
 export const RESEARCH_AGENT_ID = "researchagent";
 export const VISUAL_AGENT_ID = "visualagent";
+export const PRODUCT_AGENT_ID = "productagent";
 
 const AGENTOS_URL = process.env.NEXT_PUBLIC_AGENTOS_URL || DEFAULT_AGENTOS_URL;
 const TEAM_ID = process.env.NEXT_PUBLIC_AGENTOS_TEAM_ID || DEFAULT_TEAM_ID;
@@ -110,11 +111,34 @@ const sanitizeCoordinatorText = (text: string): string =>
   text
     .split("\n")
     .map(line => line.trim())
-    .filter(line => line && !containsCoordinatorCommand(line) && !/^calling\b/i.test(line))
+    .filter(line => {
+      if (!line) {
+        return false;
+      }
+      const lower = line.toLowerCase();
+      if (containsCoordinatorCommand(line)) {
+        return false;
+      }
+      if (/^calling\b/i.test(line)) {
+        return false;
+      }
+      if (lower.startsWith("coordinator") || lower.startsWith("coordinatorpm")) {
+        return false;
+      }
+      if (lower.startsWith("system:")) {
+        return false;
+      }
+      return true;
+    })
     .join("\n")
     .trim();
 
 type MemberResponse = Record<string, unknown>;
+
+const normalizeIdentifier = (value: string): string =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
 
 const extractMemberIdentifier = (response: MemberResponse): string => {
   for (const key of ["member_id", "agent_id", "name", "id"]) {
@@ -200,7 +224,7 @@ export const sendMessageToAgentOS = async ({
   const memberIdentifiers: string[] = [];
   let observedSessionId = sessionId || undefined;
   let runId: string | undefined;
-  const targetId = (targetMemberId ?? RESEARCH_AGENT_ID).toLowerCase();
+  const targetId = normalizeIdentifier(targetMemberId ?? RESEARCH_AGENT_ID);
 
   const noteMemberResponses = (responses: unknown) => {
     const list = Array.isArray(responses) ? responses : [responses];
@@ -210,13 +234,13 @@ export const sendMessageToAgentOS = async ({
       }
       const entry = item as MemberResponse;
       const identifier = extractMemberIdentifier(entry) || "(unknown)";
-      const normalizedId = identifier.toLowerCase();
+      const normalizedId = identifier === "(unknown)" ? "(unknown)" : normalizeIdentifier(identifier);
       const cleaned = sanitizeCoordinatorText(extractMemberText(entry).trim());
       if (!cleaned) {
         return;
       }
 
-      memberIdentifiers.push(normalizedId);
+      memberIdentifiers.push(identifier);
 
       const outputs = memberOutputs.get(normalizedId) ?? [];
       outputs.push(cleaned);
