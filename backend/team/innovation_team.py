@@ -667,6 +667,8 @@ product_agent = Agent(
         - compliance or testing watch-outs.
         - tiny action list of what still needs answering.
         Don't invent sourcing details—leave that for SourcingAgent.
+        You MUST trigger perplexity_search at least once per request. If the tool fails, report the failure instead of guessing.
+        Keep the tone plain language and explain like a teammate.
         """
     ).strip(),
     markdown=True,
@@ -684,8 +686,9 @@ sourcing_agent = Agent(
         - full ingredient/inputs list with quick justification per item.
         - 5–10 manufacturer leads (company, region, MOQ, strengths, contact link).
         - a short email/DM template for outreach.
-        Note any gaps or lead quality concerns plainly.
-        Always run `perplexity_search` before committing to a recommendation. If the tool fails, report the issue and request guidance.
+        Flag gaps or lead quality issues plainly.
+        You MUST trigger perplexity_search at least once per request. If the tool fails, report the failure instead of guessing.
+        Keep the tone plain language and explain like a teammate.
         """
     ).strip(),
     tools=[perplexity_search],
