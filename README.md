@@ -1,24 +1,69 @@
-# Product Studio Team
+# Product Studio Team (Plain‑English Guide)
 
-This package holds the single-team, stage-gated product studio described in `docs/TEAM_PLAN.md`. One coordinator runs the full pipeline end-to-end; there are no subteams or workflows.
+Build new product ideas with an AI “studio” that works like a small team. You chat in everyday language; the team moves through clear steps and asks for your approval before continuing.
 
-## Team Members
-- **CoordinatorPM** (team leader instructions) – manages stages, handles approvals in casual language, and uses helper tools (`set_stage`, `set_awaiting`, `mark_approval`, `record_brief`, `record_visual_choice`) to keep session state aligned with the conversation.
-- **ResearchAgent** – checks viability using OpenRouter’s Grok-4 fast reasoning model; Coordinator explicitly reminds them to run `perplexity_search`, and a post-hook guarantees at least one call for grounded citations.
-- **VisualAgent** – generates a single Replicate-powered mockup concept per request, sharing the raw URL and a markdown preview.
-- **ProductAgent** – writes the v1 product spec, BOM, and open questions.
-- **SourcingAgent** – finds ingredients and manufacturers using Grok-4 fast; Coordinator nudges them to run `perplexity_search`, and the same post-hook appends fresh findings automatically.
+What you get
+- A quick viability check with sources
+- One simple visual mockup to align on a direction
+- A short product spec and bill of materials (BOM)
+- A first list of ingredients and manufacturer leads
 
-Approvals are conversational: phrases like “yeah, looks good, continue” are treated as green lights. Users can ask for tweaks with natural language (e.g. “hmm, can we adjust the packaging vibe?”) and the coordinator loops back before advancing the stage.
+How it works (Agno under the hood)
+- Agent teammates: We built four specialists with Agno and put them in one Team.
+  - ResearchAgent: checks the market and competition with web citations.
+  - VisualAgent: proposes one mockup and shares a real image link.
+  - ProductAgent: turns the idea into a short, buildable spec.
+  - SourcingAgent: drafts ingredients and a shortlist of makers.
+- One coordinator: A friendly Coordinator keeps everyone on track and only moves forward when you say it’s OK (simple “looks good, continue” is enough).
+- Simple stages: intake → viability → visuals → spec → sourcing → final. You can say “revise visuals” or “go back to spec” at any time.
+- Memory: The team remembers choices and approvals using a tiny SQLite file, so your session survives refreshes.
+- Tools: Research uses Perplexity’s Search API for grounded sources. Visuals use Replicate to generate a real image URL. We add small helper tools to save your choices (e.g., selected visual, spec snapshot).
 
-## Session State & Gates
-The team stores session state with `add_session_state_to_context=True`, `enable_agentic_state=True`, and persists runs in a SQLite DB under `team/data/product_studio.db`. CoordinatorPM leans on this shared state to gate each stage, so stages progress `intake → viability → visuals → spec → sourcing → final` only after a casual approval is detected. See the JSON scaffold in `docs/TEAM_PLAN.md` for exact fields.
+Quick start
+- Requirements: Python 3.11+, Node 18+, a browser
+- Keys you’ll need (place in a `.env` at the repo root):
+  - `OPENROUTER_API_KEY` (required) – lets the agents think and write clearly.
+  - `PERPLEXITY_API_KEY` (required) – powers web search for up‑to‑date sources.
+  - `REPLICATE_API_TOKEN` (optional) – enables image generation for mockups.
 
-## Environment
-Set these variables before running the team or the FastAPI app:
+Start the backend (AgentOS)
+- cd `backend`
+- `pip install agno fastapi[standard] uvicorn httpx replicate`
+- `python agentos_app.py`
+- The AgentOS FastAPI server runs at `http://localhost:7777`
 
-- `OPENROUTER_API_KEY` – required for all OpenRouter models and the coordinator. (We auto-populate `OPENAI_API_KEY` from this so you don't need a separate key.)
-  Place this in the project-level `.env` (repo root); the team loader pulls in both the root and `team/.env` files automatically.
-- `PERPLEXITY_API_KEY` – required for the Perplexity Search API tool used by ResearchAgent and SourcingAgent (`perplexity_search`). Optional `PERPLEXITY_TIMEOUT_MS` (milliseconds) overrides request timeout and `PERPLEXITY_SEARCH_URL` swaps the endpoint if needed.
+Start the frontend (Next.js)
+- cd `frontend`
+- `npm install`
+- `npm run dev`
+- Open `http://localhost:3000`
+- If your backend isn’t on the default URL, set `NEXT_PUBLIC_AGENTOS_URL` in `frontend/.env.local` (for example `http://localhost:7777`).
 
-Image generation runs through Replicate (`bytedance/seedream-4`); ensure `REPLICATE_API_TOKEN` is available before launching AgentOS.
+Try it
+- “I want to make a calming lavender soap for Gen Z.”
+- “Approve viability” or “revise viability: check competitors in EU.”
+- “Show one playful mockup.”
+- “Approve visuals; write the v1 spec.”
+
+What Agno is doing for you
+- Agents: Each teammate is an Agno `Agent`. We group them into an Agno `Team` with one coordinator. The Team handles delegation and keeps everyone’s replies visible.
+- Shared state: We enable shared session state so the coordinator can enforce stage gates and remember approvals. The data is stored in `backend/team/data/product_studio.db`.
+- Tools with guardrails:
+  - `perplexity_search`: a web search tool that the research and sourcing agents use for fresh sources (we nudge them and also double‑check they used it).
+  - `generate_media`: creates one mockup image via Replicate so you get a real URL and inline preview.
+  - small helper tools like `set_stage`, `mark_approval`, `record_visual_choice`, and `record_spec` to save decisions as you go.
+- AgentOS app: We wrap the Team in Agno’s AgentOS, which exposes a lightweight FastAPI service. The frontend streams updates from `http://localhost:7777` so you see responses live.
+
+Approvals are casual
+- You can type “yeah, looks good, continue” or “go ahead” to advance.
+- If you’re unsure, say “revise visuals” or ask questions—the coordinator will loop the right teammate back in.
+
+Troubleshooting
+- Frontend can’t connect: make sure the backend is running on `http://localhost:7777` or update `NEXT_PUBLIC_AGENTOS_URL`.
+- No web sources: set `PERPLEXITY_API_KEY` in `.env`.
+- Image not showing: set `REPLICATE_API_TOKEN` in `.env` (or skip images and continue).
+- Model issues: confirm `OPENROUTER_API_KEY` is valid and has quota.
+
+Want more detail?
+- See the fuller plan and roles in `backend/docs/TEAM_PLAN.md`.
+- The team code lives in `backend/team/innovation_team.py` if you’re curious.
